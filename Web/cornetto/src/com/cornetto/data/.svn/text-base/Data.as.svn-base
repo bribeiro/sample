@@ -1,0 +1,270 @@
+package com.cornetto.data 
+{
+	import Box2DAS.Common.V2;
+
+	import com.cornetto.universe.tiles.TileCurveVO;
+	import com.cornetto.universe.tiles.TileInfoVO;
+	import com.cornetto.universe.tiles.TileMoveDataVO;
+	import com.robot.utils.Utils;
+
+	import flash.display.BitmapData;
+	import flash.display.DisplayObject;
+	import flash.display.MovieClip;
+	import flash.media.Sound;
+	import flash.system.ApplicationDomain;
+	import flash.utils.Dictionary;
+
+	public class Data 
+	{
+		public static var tiles : XMLList;
+		private static var _mainLibraryAppDomain : ApplicationDomain;
+		private static var _tileLibraryAppDomain : ApplicationDomain;
+		
+		public static var appDomains : Array ; 
+		
+		public static var xml : XML ;
+		public static var mapRows : XML= new XML();
+		
+		public static var dictTiles : Dictionary ; 
+		//public static var dictRestartTiles : Dictionary ; 
+		// table to convert the id to the right tile
+		public static var dictAddress : Dictionary ; 
+		
+		public static var totalTiles : int = 0;
+		public static var totalRows : int = 0;
+		public static var realTotalTiles : int = 0;
+		public static var worldHeight	: Number;
+		
+		private  static var arrDynamicTiles : Array = new Array( [ '0_0' , '0_3'] , ['1_1' , '2_3'] ) ; 
+		public static var dictDynamicTile : Dictionary ; 
+		
+		public static function addMenu(xmlStructure : XML) : void
+		{
+			 
+			xml = xmlStructure ; 
+			tiles = new XMLList( xmlStructure..tile );			
+		}
+		
+		public static function parseTiles() : void
+		{
+
+			if(! dictTiles)
+			{
+				dictTiles = new Dictionary( true ) ; 
+				dictAddress = new Dictionary(true);
+			}
+			
+			parseDynamicTiles() ; 
+			var i : int ; 
+			totalTiles = tiles.length() ; 
+      		//Config.NR_ROWS = l / Config.NR_COLUMNS ; 
+			var vect : Array ;
+			var tileChildren : XMLList ; 
+			var j : int ;
+			var tileInfoVO : TileInfoVO ; 
+			var str : String ; 
+			var index : int  ;
+			var ll : int ; 
+			var tileMC : MovieClip ;
+			
+			var mapsLenght : int = 
+			totalRows = mapRows..item.length();
+			realTotalTiles = mapsLenght * 6;
+			worldHeight = mapsLenght * 500;
+			
+			for(i = 0; i < mapsLenght; i++)
+			{
+				dictAddress["row"+ mapRows..item[i].@GameRow] =  mapRows..item[i].@FLARow;
+			}
+			
+			for( i = 0 ; i < totalTiles ; i++)
+			{
+				str = tiles[i].@name ;
+				index = str.indexOf('/') ; 
+				str = str.substr( index + 1 , str.length - index ) ;   
+				
+				tileChildren = tiles[i].children() ; 
+				ll= tileChildren.length() ;
+				vect = [] ; 
+        
+		        var tileName : String = str.slice(4);
+		        var tilePosition : Number = Number(tileName.slice(0, tileName.indexOf("_")));
+				
+		        tileMC = Data.getTile(str , Math.floor(tilePosition/Config.NR_ROWS) ) as MovieClip ; 
+				
+				for( j = 0 ; j < ll ; j++)
+				{
+					tileInfoVO = new TileInfoVO() ; 
+					tileInfoVO.x = tileChildren[j].@x ; 
+					tileInfoVO.y = tileChildren[j].@y ; 
+					tileInfoVO.width = tileChildren[j].@width ; 
+					tileInfoVO.height = tileChildren[j].@height ; 
+					tileInfoVO.rot = tileChildren[j].@rotation ; 
+					tileInfoVO.type = tileChildren[j].@['class'] ; 
+					tileInfoVO.zindex = tileChildren[j].@zIndex  ; 
+					tileInfoVO.activated = false  ; 
+					tileInfoVO.mc = tileMC.physics_mc.getChildAt( tileInfoVO.zindex ) as MovieClip; 
+					if( tileInfoVO.type == 'CurvedElement')
+					{
+						var tilePoints : XMLList = tileChildren[j].point ; 
+						tileInfoVO.points = new Vector.<V2>() ; 
+						var p : V2 ; 
+						var k : int  ; 
+						var lll : int = tilePoints.length() ; 
+						for( k = 0 ; k < lll ; k++)
+						{
+							var newX : Number = tileMC.physics_mc.x + tileInfoVO.x + Number(tilePoints[ k ].@x ); 
+							var newY : Number = tileMC.physics_mc.y + tileInfoVO.y + Number(tilePoints[ k ].@y) ; 
+							p = new V2( newX , newY ) ;
+							tileInfoVO.points.push( p ) ; 
+							
+							
+						}
+						
+						tileInfoVO.curvesVO = new Vector.<TileCurveVO>() ; 
+						for( k = 0 ; k < lll-1 ; k++ )
+						{
+							var v1 : V2 = tileInfoVO.points[ k ] as V2 ; 
+							var v2 : V2 = tileInfoVO.points[ k+1 ] as V2 ; 
+				      		
+				      		var dx : Number = v2.x - v1.x ; 
+				      		var dy : Number = v2.y - v1.y ; 
+				      		 	
+				      		var mpx : Number = dx / 2 ;
+				      		var mpy : Number = dy / 2 ;
+				      		 	
+				      		var radAngle : Number=Math.atan2( dy , dx );
+				      		var newRot : Number = Utils.getDegrees( radAngle ) ; 
+				      		 	
+				      		var d : Number  = Math.sqrt( dx*dx + dy*dy )  ; 
+					      		
+					      	var x : Number = v1.x + mpx - Math.sin( radAngle)*25  ; 
+					      	var y : Number = v1.y +  mpy + Math.cos( radAngle)*25 ; 
+					      	
+					      	var tileCurveVO : TileCurveVO = new TileCurveVO() ; 
+					      	
+					      	tileCurveVO.d = d ; 
+					      	tileCurveVO.x = x ; 
+					      	tileCurveVO.y = y ; 
+					      	tileCurveVO.rotation = newRot ; 
+							tileInfoVO.curvesVO.push( tileCurveVO ) ; 
+						}
+						
+					}
+					if( tileInfoVO.type == 'MovingElement')
+					{
+						var tileMD : TileMoveDataVO = new TileMoveDataVO() ; 
+						tileMD.initx = Number(tileChildren[ j ].@initialX )  ; 
+						tileMD.inity = Number(tileChildren[ j ].@initialY ) ; 
+						tileMD.initRot = Number(tileChildren[ j ].@initialRotation ) ; 
+						tileMD.frames = Number(tileChildren[ j ].@frames ) ; 
+						tileMD.endx = Number(tileChildren[ j ].@endX ) ; 
+						tileMD.endy = Number(tileChildren[ j ].@endY ) ; 
+						tileMD.endRot = Number(tileChildren[ j ].@endRotation ) ; 
+						tileInfoVO.moveData = tileMD ; 
+					}
+
+					vect.push( tileInfoVO ) ; 
+				}
+				dictTiles[str] = vect ; 
+			}
+		}
+		
+		private static function parseDynamicTiles() : void
+		{
+			dictDynamicTile  = new Dictionary() ; 
+			var i : int ; 
+			var l : int = arrDynamicTiles.length ;
+			for( i = 0 ; i < l ; ++i)
+			{
+				dictDynamicTile[ arrDynamicTiles[ i ][0]] = false ; 
+				dictDynamicTile[ arrDynamicTiles[ i ][1]] = true ; 
+					
+				var rn : Number = Math.random() ; 
+				if( rn >= .5) 
+				{
+					dictDynamicTile[ arrDynamicTiles[ i ][0]] = true ; 
+					dictDynamicTile[ arrDynamicTiles[ i ][1]] = false ; 
+				}
+			}
+		}
+		public static function restart() : void
+		{
+			parseTiles() ; 
+		}
+		//**GET ASSETS FROM MAIN LIBRARY
+		public static function getDisplayObject( id : String ) : DisplayObject
+		{
+			var AssetClass : Class = getClass(id) ;
+			var displayObject : * = new AssetClass() as DisplayObject ;
+			return displayObject ;
+		}
+		
+		public static function getDisplayObjectFromTile( id : String , piter : int ) : DisplayObject 
+		{
+			var AssetClass : Class = getClassFromTile(id , piter ) ;
+			var displayObject : * = new AssetClass() as DisplayObject ;
+			return displayObject ;
+		}
+		public static function getTileObject( id : String ) : DisplayObject
+		{
+			var AssetClass : Class = getTileClass(id) ;
+			var displayObject : * = new AssetClass() as DisplayObject ;
+			return displayObject ;
+		}
+		//**GET BITMAP FROM MAIN LIBRARY
+		public static function getBitmap( id : String ) : BitmapData
+		{
+			var AssetClass : Class = getClass(id) ;
+			var bitmapData : * = new AssetClass() as BitmapData ;
+			return bitmapData ;
+		}
+		//**GET SOUND FROM MAIN LIBRARY
+		public static function getSoundObject( id : String ) : Sound
+		{
+			var AssetClass : Class = getClass(id) ;
+			var soundObject : * = new AssetClass() as Sound ;
+			return soundObject ;
+		}
+		
+		
+	   public static function getTile( id : String , piter : Number ) : DisplayObject
+	   {
+	     var AssetClass : Class = getClassFromTile(id , piter ) ;
+	     var displayObject : * = new AssetClass() as DisplayObject;
+	     return displayObject ;
+	   }
+    
+		public static function set mainLibraryAppDomain(value : ApplicationDomain) : void
+		{
+			_mainLibraryAppDomain = value;
+		}
+		public static function set tileLibraryAppDomain(value : ApplicationDomain) : void
+		{
+			_tileLibraryAppDomain = value;
+		}
+		public static function get mainLibraryAppDomain() : ApplicationDomain
+		{
+			return _mainLibraryAppDomain ; 
+		}
+		public static function get tileLibraryAppDomain() : ApplicationDomain
+		{
+			return _tileLibraryAppDomain ; 
+		}
+
+		private static function getClass(  id : String ) : Class
+		{
+			return _mainLibraryAppDomain.getDefinition(id) as Class ;
+		}
+		private static function getTileClass(  id : String ) : Class
+		{
+			return _tileLibraryAppDomain.getDefinition(id) as Class ;
+		}
+		private static function getClassFromTile( id : String , piter : int ) : Class
+		{
+ 			return appDomains[ piter ].getDefinition( id ) as Class ;
+		}
+
+
+	}
+}

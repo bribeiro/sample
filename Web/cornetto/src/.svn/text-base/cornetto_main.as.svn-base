@@ -1,0 +1,50 @@
+package 
+{
+	import cornetto_shell.views.ChooseCharacterView;
+	import cornetto_shell.views.DialogView;
+	import cornetto_shell.views.DummyView;
+	import cornetto_shell.views.EndView;
+	import cornetto_shell.views.GameView;
+	import cornetto_shell.views.InstructionsView;
+	import cornetto_shell.views.IntroView;
+	import cornetto_shell.views.LeaderBoardView;
+	import cornetto_shell.views.LoaderView;
+	import cornetto_shell.views.MainView;
+	import cornetto_shell.views.OverlayMaskView;
+	import cornetto_shell.views.PausedGameView;
+	import cornetto_shell.views.ShareView;
+	import cornetto_shell.views.SubmitToLBView;
+	
+	import flash.display.Sprite;
+
+	[SWF(width='760', height='500', backgroundColor='#fbfcfc', frameRate='60')]
+	public class cornetto_main extends Sprite
+	{
+		
+		/**
+		 * This is just to generate a self contained swf file with all the views
+		 */
+		public function cornetto_main()
+		{
+
+			OverlayMaskView;
+			PausedGameView;
+			LoaderView;
+			MainView;
+			IntroView;
+			GameView;
+			ChooseCharacterView;
+			InstructionsView;
+			DummyView;
+		    EndView;
+			ShareView;
+			SubmitToLBView;
+			LeaderBoardView;
+			DialogView;
+			
+			
+		}
+	
+	}
+
+}

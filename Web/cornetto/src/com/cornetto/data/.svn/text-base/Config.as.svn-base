@@ -1,0 +1,29 @@
+package com.cornetto.data {
+	/**
+	 * @author robertocascavilla
+	 */
+	public class Config 
+	{
+		public static const ASSETS_ADDRESS : String = 'http://cornetto.unit9.net/assets/swf/Assets.swf' ; 
+		public static const TILE_ASSETS_ADDRESS : String = 'http://cornetto.unit9.net/assets/swf/Tiles.swf' ; 
+		public static var XML_ADDRESS : String = 'http://cornetto.unit9.net/assets/xml/appStructure.xml' ; 
+		public static var XML_TILE_ADDRESS : String = 'http://cornetto.unit9.net/assets/xml/tile.xml' ; 
+
+		public static var XML_MAP : String = 'http://cornetto.unit9.net/assets/xml/map.xml' ; 
+		
+		public static var NR_COLUMNS : int = 6 ; 
+		public static var NR_ROWS : int = 15 ; 
+		
+		public static var SHOW_STAT : Boolean = false ; 
+		public static var DEBUG_ON : Boolean = false ; 
+		public static var DEBUG_TILEADDRESS_ON : Boolean = false ; 
+		public static var PLAY_SOUNDS : Boolean = true ; 
+		 
+		
+		//public static var CAMERA_FOCUS_DEVIL : int = 265 ; //350 ; 
+		//public static var CAMERA_FOCUS_ANGEL : int = 265 ; //180 ; 
+		
+		public static var SCREEN_W : int = 760 ; 
+		public static var SCREEN_H : int = 500 ; 
+	}
+}

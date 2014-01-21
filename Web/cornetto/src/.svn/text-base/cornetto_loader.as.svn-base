@@ -1,0 +1,126 @@
+/**
+* @mxmlc -o ../../../website/cornetto_loader.swf -default-size 760 500 -debug=false -default-background-color #FBFCFC -default-frame-rate 60 -target-player 10.1.0 -source-path lib/misc -library-path lib/shell_assets.swc
+*/
+
+package 
+{
+	import cornetto_shell.service.CornettoServices;
+	import potato.modules.navigation.ViewLoader;
+	import potato.modules.navigation.presets.YAMLLoaderView;
+
+	import views.ALoaderView;
+
+	import com.greensock.TweenMax;
+	import com.robot.utils.Stats;
+
+	import flash.display.MovieClip;
+	import flash.display.StageAlign;
+	import flash.display.StageScaleMode;
+	import flash.events.Event;
+	import flash.events.ProgressEvent;
+
+	import flash.events.Event;
+	import potato.modules.navigation.ViewLoader;
+	import flash.display.Sprite;
+	import flash.display.MovieClip;
+	import views.ALoaderView;
+	import views.AMaskView;
+	import com.greensock.TweenMax;
+
+	import com.robot.utils.Stats;
+	import com.cornetto.data.Config;
+	import flash.system.Security;
+	import flash.system.LoaderContext;
+	import com.greensock.loading.LoaderMax;
+	import flash.system.ApplicationDomain;
+	import flash.system.SecurityDomain;
+
+	/**
+	 * Loader class
+	 */
+
+	[SWF(width='760', height='500', backgroundColor='#FBFBFB', frameRate='60')]
+	public class cornetto_loader extends YAMLLoaderView
+	{
+	protected var asset : MovieClip;
+	protected var frame	: Sprite;
+	protected var _message : String;
+	
+    override public function init():void
+    {
+		
+		Security.allowDomain("*");
+		Security.allowInsecureDomain("*");
+
+	
+		stage.scaleMode = StageScaleMode.NO_SCALE;
+		stage.align 	= StageAlign.TOP_LEFT;
+		
+		addChild(asset = new ALoaderView);
+		addChild(frame = new AMaskView);
+
+		stage.align = StageAlign.TOP_LEFT;
+		stage.scaleMode  = StageScaleMode.NO_SCALE;
+		
+		
+		// loader the main view, container of all the other views
+		var vl:ViewLoader = loaderFor("main");
+		vl.addEventListener(ProgressEvent.PROGRESS, _onProgress);
+		vl.addEventListener(Event.COMPLETE, onMainLoadComplete);
+		vl.start();
+		
+		// set the inicial value to the loader
+		asset.loader_percent.label.text = "0";
+		asset.loader_percent.alpha = 1;
+		
+		CornettoServices.connect(parameters.gateway);
+	}
+	
+    protected function _onProgress(e : ProgressEvent):void
+    {
+		// check how much was loaded
+		var percent : int = Math.round((e.bytesLoaded/e.bytesTotal)*100)
+			
+		// update the asset that has 100 frames
+		asset.loader.gotoAndStop(Math.round(percent));
+		
+		// add the percent to the textfield
+		(percent >= 0) ?  asset.loader_percent.label.text = percent.toString() : 
+						  asset.loader_percent.label.text = "0";
+    }
+
+    public function onMainLoadComplete(e:Event):void
+    {
+		// remove listeners
+		e.target.removeEventListener(Event.COMPLETE, onMainLoadComplete);
+ 		e.target.removeEventListener(ProgressEvent.PROGRESS, _onProgress);
+
+		// tween the last frames to the animation out of the loader
+			TweenMax.to(asset.loader, .6, {frame:asset.loader.totalFrames, onComplete: function() : void{
+				
+					// remove assets 
+					removeChild(asset);
+					removeChild(frame);
+					
+					// change view to the container
+					changeView("main");
+					
+					// add overlay with paper frames
+					addView("overlayMask");
+				
+					frame = null;
+					asset = null;
+					var stat : Stats;
+					if(Config.SHOW_STAT)		
+					{
+						addChild(stat = new Stats)
+						stat.x = 25;
+						stat.y = 35;
+					}	
+				}
+			});
+
+
+    }
+	}
+}

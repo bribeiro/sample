@@ -1,0 +1,344 @@
+package com.cornetto.universe {
+	import cornetto_shell.models.GameModel;
+
+	import wck.World;
+
+	import com.cornetto.data.Config;
+	import com.cornetto.data.ConfigHero;
+	import com.cornetto.main.GameVars;
+	import com.cornetto.universe.background.Background;
+	import com.cornetto.universe.falling.FallingManager;
+	import com.cornetto.universe.hero.HeroAngel;
+	import com.cornetto.universe.hero.HeroDevil;
+	import com.cornetto.universe.hero.HeroFlags;
+	import com.cornetto.universe.tiles.TileManager;
+
+	import flash.display.Sprite;
+	import flash.events.Event;
+	import flash.ui.Keyboard;
+	import flash.utils.setTimeout;
+	/**
+	 * @author robertocascavilla
+	 */
+	public class Universe extends Sprite
+	{
+		private var gv : GameVars ; 
+		private var _worldLerp : int ;//**var to ease the movement of the camera on x axis
+		private var _keyEnterPressed : Boolean  ; //**var to manage the switch
+		private var _background : Background ; //**background
+		
+		private var _switching : Boolean ; //**give some time to falling manager, when switching.
+		public function Universe()
+		{
+			gv = GameVars.me ; 
+		}
+		
+		public function init() : void
+		{
+			initValues() ; 
+			
+			createWorld() ;
+			createBackground() ; 	
+			
+			//**add background and world. this action have to happen before TileManager
+			addDisplayObject() ; 
+			
+			createTileManager() ; 
+			createHeroAngel() ; 
+			createHeroDevil() ; 
+			
+			//**selection of initial character
+			chooseHero() ; 
+			
+			//createFallingObjectsPosition() ; 
+			createFallingManager() ; 				
+			
+			startGame() ; 
+			
+		}
+		
+		
+		//**start game
+		private function startGame() : void
+		{
+			gv.score.startTimer();
+			addEventListener( Event.ENTER_FRAME , run ) ; 
+		}
+		
+		//**Restart the game, from End screen
+		public function restart() : void
+		{
+			_switching = false ; 
+			gv.switching = false ; 
+			gv.mainCounter = 0 ; 
+			_background.unmute();
+			
+			
+			if( gv.heroActive != GameModel.instance.character ) switchCharacter() ; 
+			
+		}
+			
+		//**Main Universe Loop
+		private var dif:Number ;
+		private var difeasing:Number ; 
+		public function run( evt : Event ) : void
+		{
+			if( !gv.world.paused)
+			{
+				gv.mainCounter ++ ; //**main integer for all game experience. 
+				//**easing on camera x, related to speed of the character
+				//** the speed of the character will make the camera moves ( with easing ) more on right or left
+				//**in order to give more space to the charater
+				var newX : int = -gv.hero.x  + 378  - _worldLerp ; 
+				
+				//**easing world Lerp
+				var end_value : Number = gv.hero.linearVelocityX * 40 ; 
+				dif = end_value - _worldLerp ;
+				difeasing = dif/ 60 ; 
+				_worldLerp += difeasing;
+				
+				if( !gv.hero.dead )
+				{
+					gv.world.x = newX ; 
+					var newY : Number = -gv.hero.y + 265 ; 
+					//easing_mc( newY , 'y') ; 
+					
+					dif = newY - gv.world.y ;
+					difeasing = dif/1.2 ;
+					gv.world.y += difeasing;
+				}
+				if( gv.key.isDown(Keyboard.ENTER) )
+				{
+					_switching = true ; 
+					gv.switching = true ; 
+					setTimeout( endSwitching , 1000  ) ; 
+					switchCharacter() ; 
+				}
+				else
+				{
+					_keyEnterPressed = false ; 
+				}
+		
+				gv.tileManager.update() ; 
+				_background.update() ;
+				
+				//***************
+				//** hero position check. This is used to know in which tile
+				//hero it is. used For Falling Objects
+				if( !_switching ) gv.fallingManager.update() ; 
+				
+				//***************
+				//** update to recharge the powerbar of inactive Hero
+				//**check who is the inactive hero
+				var otherCh : String = HeroFlags.DEVIL ; 
+				var callCh : String = 'Devil' ; 
+				if( gv.heroActive == HeroFlags.DEVIL )
+				{
+					otherCh = HeroFlags.ANGEL ; 
+					callCh  = 'Angel' ; 
+				}
+				
+				//**recharge only if hero inactive is on a platform
+				if( gv['hero' + callCh ].manifold )
+				{
+					gv.powerBar.updateOtherCh( otherCh , -ConfigHero.REPLENISH_TIME ) ; 
+				}
+			}
+		}
+		private function endSwitching() : void
+		{
+			gv.switching = false ; 
+			_switching = false ; 
+			
+		//	gv.background.updateSoundAfterSwitch()
+			//gv.mainCounter = 0 ; 
+		}
+		
+		
+		
+		private function switchCharacter() : void
+		{
+			if( !_keyEnterPressed )
+			{
+				if( !gv.hero.dead )
+				{
+					gv.fallingManager.clean() ;
+					gv.fallingManager.kill() ; 
+					
+					gv.mainCounter = 0 ;
+					if( gv.heroActive == HeroFlags.ANGEL )
+					{
+						//**store manifold to check, when inactive, if powerbar need to recharge
+						gv.hero.manifold = gv.manifold ; 
+						gv.hero.deActivate() ; 
+						gv.hero = gv.heroDevil ;
+						gv.hero.activate() ; 
+						gv.heroActive = HeroFlags.DEVIL ;  
+						
+						if(gv.view)
+							gv.view.activateDevil() ; 
+						
+					}
+					else
+					{
+						//**store manifold to check, when inactive, if powerbar need to recharge
+						gv.hero.manifold = gv.manifold ; 
+						gv.hero.deActivate() ; 
+						gv.hero = gv.heroAngel ; 
+						gv.hero.activate() ; 
+						gv.heroActive = HeroFlags.ANGEL ; 
+						
+						if(gv.view)
+							gv.view.activateAngel() ; 
+						
+					}
+					gv.score.switched = 1;
+					_keyEnterPressed = true ;
+				}
+			}
+
+		}
+		
+	
+		
+		//**Init choose
+		private function chooseHero() : void
+		{
+			var ch : String = GameModel.instance.character ; 
+			if( !ch ) ch = HeroFlags.ANGEL ; 
+			this['choose' + ch]() ; 
+		}
+		protected function chooseangel() : void
+		{
+			gv.hero = gv.heroAngel ; 
+			gv.heroActive = HeroFlags.ANGEL ; 
+			gv.hero.activate() ; 
+			gv.heroDevil.deActivate() ; 
+		}
+		protected function choosedevil() : void
+		{
+			gv.hero = gv.heroDevil ; 
+			gv.heroActive = HeroFlags.DEVIL ; 
+			gv.hero.activate() ; 
+			gv.heroAngel.deActivate() ; 
+		}
+		
+
+		private function addDisplayObject() : void
+		{
+			addChild( _background ) ; 
+			addChild( gv.world ) ; 
+		}
+		
+		//**CREATE STUFF
+		private function createWorld() : void
+		{
+			gv.world = new World() ; 
+			gv.world.debugDraw = Config.DEBUG_ON ; 
+			gv.world.timeStep = 0.05 ; 
+		}
+		
+		//**Create Falling Manager
+		private function createFallingManager() : void
+		{
+			gv.fallingManager = new FallingManager() ; 
+			gv.fallingManager.init() ; 
+		}
+		
+		
+		
+		//**Create Hero Angel
+		private function createHeroAngel( ) : void
+		{
+			gv.heroAngel = new HeroAngel() ; 
+			
+			var endX : int = ConfigHero.ANGEL_INIT_POS_X ;  //4000 ; 
+			var endY : int = ConfigHero.ANGEL_INIT_POS_Y ;//13800 ; 
+			//debug in order to use row and column info on URL
+
+			if( GameModel.instance.row > 0 && (GameModel.instance.character == GameModel.ANGEL || GameModel.instance.character == null))
+			{
+				endY = GameModel.instance.row * 500 ; 	
+				endX = GameModel.instance.column * Config.SCREEN_W ; 	
+			}
+			
+			
+			if(GameModel.instance.both && GameModel.instance.character != GameModel.ANGEL && GameModel.instance.character != null)
+			{
+				endY = GameModel.instance.row* 500 ; 	
+				(GameModel.instance.row < 5) ? endX = (GameModel.instance.column +1 ) * Config.SCREEN_W : endX = (GameModel.instance.column - 1 ) * 760 ; 
+			}
+			
+			gv.heroAngel.x = endX; // 3800 ; 
+			gv.heroAngel.y =  endY; //14500 ; 
+			
+			gv.world.addChild( gv.heroAngel ) ; 
+			gv.heroAngel.addCh() ;
+		}
+		//**Create Hero Devil
+		private function createHeroDevil( ) : void
+		{
+			gv.heroDevil = new HeroDevil() ; 
+			
+			var endX : int = ConfigHero.DEVIL_INIT_POS_X ;  //4000 ; 
+			var endY : int = ConfigHero.DEVIL_INIT_POS_Y ;//13800 ; 
+			//debug in order to use row and column info on URL
+			if( GameModel.instance.row > 0 && GameModel.instance.character == GameModel.DEVIL )
+			{
+				endY = GameModel.instance.row * 500 ; 	
+				endX = GameModel.instance.column * Config.SCREEN_W ; 	
+			}
+			
+			if(GameModel.instance.both && GameModel.instance.character != GameModel.DEVIL)
+			{
+				endY = GameModel.instance.row* 500 ; 	
+				(GameModel.instance.row < 5) ? endX = (GameModel.instance.column +1 ) * Config.SCREEN_W : endX = (GameModel.instance.column - 1 ) * 760 ; 	
+			}
+			
+			gv.heroDevil.x = endX; // 3800 ; 
+			gv.heroDevil.y =  endY; //14500 ; 
+			gv.world.addChild( gv.heroDevil ) ; 
+			gv.heroDevil.addCh() ;
+		}
+		//**Create Tile Manager
+		private function createTileManager() : void
+		{
+			gv.tileManager = new TileManager() ; 
+			gv.tileManager.init() ; 
+		}
+		//**Create Background
+		private function createBackground() : void
+		{
+			_background  = new Background() ; 
+			addChild( _background ) ; 	
+		}
+		
+		//**INIT VALUES , FOR UNIVERSE
+		private function initValues() : void
+		{
+			//**counter to manage moving platform position
+			gv.mainCounter = 0 ; 
+			
+			_switching = false ;
+			gv.switching = false ; 
+			_keyEnterPressed = false ; 
+			_worldLerp = 0 ; 
+		}
+		
+		//**called from Shell
+		public function muteBackground(): void
+		{
+			_background.mute();
+		}
+		
+		public function unmuteBackground(): void
+		{
+			_background.unmute();
+		}
+		
+		public function get background():Background
+		{
+			return _background;
+		}
+	}
+}
